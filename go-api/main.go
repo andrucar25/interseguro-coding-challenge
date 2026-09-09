@@ -2,18 +2,28 @@ package main
 
 import (
 	"log"
+	"net/http"
 	"os"
+	"time"
 
 	"github.com/andrucar25/interseguro-coding-challenge/go-api/httpapi"
+	"github.com/andrucar25/interseguro-coding-challenge/go-api/statistics"
 )
+
+const statisticsTimeout = 5 * time.Second
 
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "3000"
+		port = "8080"
 	}
 
-	if err := httpapi.New().Listen(":" + port); err != nil {
+	statisticsClient, err := statistics.New(os.Getenv("NODE_API_URL"), &http.Client{Timeout: statisticsTimeout})
+	if err != nil {
+		log.Fatalf("invalid NODE_API_URL: %v", err)
+	}
+
+	if err := httpapi.New(statisticsClient).Listen(":" + port); err != nil {
 		log.Fatal(err)
 	}
 }

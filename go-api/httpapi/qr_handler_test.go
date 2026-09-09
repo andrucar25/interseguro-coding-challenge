@@ -2,7 +2,9 @@ package httpapi
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"math"
 	"net/http"
@@ -10,6 +12,8 @@ import (
 	"testing"
 
 	"github.com/andrucar25/interseguro-coding-challenge/go-api/qr"
+	"github.com/andrucar25/interseguro-coding-challenge/go-api/statistics"
+	"github.com/gofiber/fiber/v3"
 )
 
 const testTolerance = 1e-10
@@ -25,7 +29,7 @@ func TestFactorizeQR(t *testing.T) {
 		t.Fatalf("json.Marshal() error = %v", err)
 	}
 
-	response := performRequest(t, body)
+	response := performRequest(t, New(fakeStatisticsClient{result: statistics.Result{Maximum: 1, Minimum: -1, Sum: 0, Average: 0, HasDiagonalMatrix: false}}), body)
 	if response.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d, want %d", response.StatusCode, http.StatusOK)
 	}
@@ -37,6 +41,56 @@ func TestFactorizeQR(t *testing.T) {
 	assertMatrixApproxEqual(t, multiply(transpose(result.Q), result.Q), identity(3))
 	assertMatrixApproxEqual(t, multiply(result.Q, result.R), input)
 	assertUpperTriangular(t, result.R)
+}
+
+func TestFactorizeQRCallsNodeAndReturnsStatistics(t *testing.T) {
+	input := qr.Matrix{{3}, {4}}
+	wantStatistics := statistics.Result{Maximum: 4, Minimum: -5, Sum: -1, Average: -0.25, HasDiagonalMatrix: true}
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodPost {
+			t.Errorf("method = %q, want %q", request.Method, http.MethodPost)
+		}
+		if request.URL.Path != "/api/v1/statistics" {
+			t.Errorf("path = %q, want %q", request.URL.Path, "/api/v1/statistics")
+		}
+
+		var payload struct {
+			Q qr.Matrix `json:"q"`
+			R qr.Matrix `json:"r"`
+		}
+		if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
+			t.Errorf("decode Node request: %v", err)
+		}
+		assertShape(t, payload.Q, 2, 1)
+		assertShape(t, payload.R, 1, 1)
+		assertMatrixApproxEqual(t, multiply(payload.Q, payload.R), input)
+
+		if err := json.NewEncoder(writer).Encode(wantStatistics); err != nil {
+			t.Errorf("encode Node response: %v", err)
+		}
+	}))
+	defer server.Close()
+
+	statisticsClient, err := statistics.New(server.URL, server.Client())
+	if err != nil {
+		t.Fatalf("statistics.New() error = %v", err)
+	}
+	body, err := json.Marshal(qrRequest{Matrix: input})
+	if err != nil {
+		t.Fatalf("json.Marshal() error = %v", err)
+	}
+
+	response := performRequest(t, New(statisticsClient), body)
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want %d", response.StatusCode, http.StatusOK)
+	}
+
+	var result qrResponse
+	decodeJSON(t, response.Body, &result)
+	assertMatrixApproxEqual(t, multiply(result.Q, result.R), input)
+	if result.Statistics != wantStatistics {
+		t.Errorf("statistics = %#v, want %#v", result.Statistics, wantStatistics)
+	}
 }
 
 func TestFactorizeQRInvalidRequest(t *testing.T) {
@@ -57,7 +111,7 @@ func TestFactorizeQRInvalidRequest(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			response := performRequest(t, []byte(testCase.body))
+			response := performRequest(t, New(fakeStatisticsClient{}), []byte(testCase.body))
 			if response.StatusCode != http.StatusBadRequest {
 				t.Fatalf("status = %d, want %d", response.StatusCode, http.StatusBadRequest)
 			}
@@ -74,16 +128,71 @@ func TestFactorizeQRInvalidRequest(t *testing.T) {
 	}
 }
 
-func performRequest(t *testing.T, body []byte) *http.Response {
+func TestFactorizeQRMapsDownstreamErrors(t *testing.T) {
+	testCases := []struct {
+		name       string
+		err        error
+		wantStatus int
+		wantBody   errorResponse
+	}{
+		{
+			name:       "unavailable downstream",
+			err:        wrapError(statistics.ErrDownstream),
+			wantStatus: http.StatusBadGateway,
+			wantBody:   errorResponse{Error: "downstream_error", Message: "unable to obtain statistics"},
+		},
+		{
+			name:       "timeout",
+			err:        wrapError(statistics.ErrTimeout),
+			wantStatus: http.StatusGatewayTimeout,
+			wantBody:   errorResponse{Error: "downstream_timeout", Message: "statistics service timed out"},
+		},
+		{
+			name:       "malformed downstream JSON",
+			err:        wrapError(statistics.ErrDownstream),
+			wantStatus: http.StatusBadGateway,
+			wantBody:   errorResponse{Error: "downstream_error", Message: "unable to obtain statistics"},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			response := performRequest(t, New(fakeStatisticsClient{err: testCase.err}), []byte(`{"matrix":[[1]]}`))
+			if response.StatusCode != testCase.wantStatus {
+				t.Fatalf("status = %d, want %d", response.StatusCode, testCase.wantStatus)
+			}
+			var result errorResponse
+			decodeJSON(t, response.Body, &result)
+			if result != testCase.wantBody {
+				t.Errorf("response = %#v, want %#v", result, testCase.wantBody)
+			}
+		})
+	}
+}
+
+func performRequest(t *testing.T, app *fiber.App, body []byte) *http.Response {
 	t.Helper()
 	request := httptest.NewRequest(http.MethodPost, "/qr", bytes.NewReader(body))
 	request.Header.Set("Content-Type", "application/json")
 
-	response, err := New().Test(request)
+	response, err := app.Test(request)
 	if err != nil {
 		t.Fatalf("app.Test() error = %v", err)
 	}
 	return response
+}
+
+type fakeStatisticsClient struct {
+	result statistics.Result
+	err    error
+}
+
+func (client fakeStatisticsClient) Calculate(context.Context, qr.Matrix, qr.Matrix) (statistics.Result, error) {
+	return client.result, client.err
+}
+
+func wrapError(cause error) error {
+	return errors.Join(errors.New("wrapped downstream failure"), cause)
 }
 
 func decodeJSON(t *testing.T, body io.ReadCloser, destination any) {
