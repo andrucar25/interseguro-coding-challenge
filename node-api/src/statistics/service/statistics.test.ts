@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { calculateStatistics } from "./statistics.js";
+import { calculateStatistics } from "./statistics.service.js";
 
 describe("calculateStatistics", () => {
 	it("calculates every aggregate across positive-valued matrices", () => {

@@ -9,7 +9,6 @@ export interface MatrixStatistics {
 	hasDiagonalMatrix: boolean;
 }
 
-// QR output can retain floating-point round-off in values that are mathematically zero.
 const DIAGONAL_RELATIVE_TOLERANCE = 1e-12;
 
 interface AggregateAccumulator {
@@ -116,7 +115,7 @@ function processMatrix(
 	);
 }
 
-export function calculateStatistics(input: unknown): MatrixStatistics {
+export const calculateStatistics = (input: unknown): MatrixStatistics => {
 	const matrices = validateMatrixCollection(input);
 	const accumulator = createAggregateAccumulator();
 	let hasDiagonalMatrix = false;

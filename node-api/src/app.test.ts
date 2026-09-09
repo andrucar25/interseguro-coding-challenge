@@ -40,6 +40,34 @@ describe("POST /api/v1/statistics", () => {
 		expect(response.body).toEqual({ error: "invalid_request" });
 	});
 
+	it("returns 415 for a non-JSON request media type", async () => {
+		const response = await request(app)
+			.post("/api/v1/statistics")
+			.set("Content-Type", "text/plain")
+			.send('{"q":[[1]],"r":[[1]]}');
+
+		expect(response.status).toBe(415);
+		expect(response.headers["content-type"]).toMatch(/^application\/json/);
+		expect(response.body).toEqual({ error: "invalid_request" });
+	});
+
+	it("returns 413 for JSON larger than the parser limit", async () => {
+		const body = JSON.stringify({
+			q: [[1]],
+			r: [[1]],
+			padding: "x".repeat(100 * 1024),
+		});
+
+		const response = await request(app)
+			.post("/api/v1/statistics")
+			.set("Content-Type", "application/json")
+			.send(body);
+
+		expect(response.status).toBe(413);
+		expect(response.headers["content-type"]).toMatch(/^application\/json/);
+		expect(response.body).toEqual({ error: "invalid_request" });
+	});
+
 	it.each([
 		["an absent body", undefined],
 		["a missing q matrix", { r: [[1]] }],
