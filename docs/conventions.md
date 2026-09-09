@@ -19,6 +19,7 @@
 ## Go API
 
 - Use idiomatic Go, Fiber, explicit error handling, and the standard library when sufficient.
-- Format Go code with `gofmt`.
+- `gofmt` is the canonical formatter for Go code; all Go source files must be formatted with it.
+- Do not introduce alternative Go formatters unless there is an explicit project decision.
 
 Do not introduce Clean Architecture, DDD, repository patterns, dependency injection, or comparable structural complexity without a demonstrated need.

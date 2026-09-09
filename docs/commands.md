@@ -20,9 +20,22 @@ npm run build        # compile TypeScript to dist/
 npm start            # run compiled JavaScript
 ```
 
-## Future Go API
+## Go API
 
-When `go-api/` exists, expected validation conventions are `gofmt` (or `go fmt`), `go vet`, `go test`, and `go build`. These commands have not been tested in this repository.
+Run these commands from `go-api/`:
+
+```bash
+# Apply formatting to every Go source file recursively.
+find . -type f -name '*.go' -exec gofmt -w {} +
+
+# Check formatting without modifying files. This exits non-zero if gofmt finds
+# any unformatted files.
+test -z "$(find . -type f -name '*.go' -exec gofmt -l {} +)"
+```
+
+`gofmt` is the standard formatter for this project. Use `go vet ./...`,
+`go test ./...`, and `go build ./...` as applicable for additional Go
+validation.
 
 ## Future infrastructure
 

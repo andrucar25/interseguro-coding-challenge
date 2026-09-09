@@ -207,10 +207,12 @@ Do not add libraries merely to imitate patterns used in Node.
 
 After modifying Go code, run the applicable repository commands.
 
-Normally include:
+First apply `gofmt`, then verify that it reports no unformatted files, and
+then run the remaining applicable Go validations. Normally include:
 
 ```bash
-gofmt
+find . -type f -name '*.go' -exec gofmt -w {} +
+test -z "$(find . -type f -name '*.go' -exec gofmt -l {} +)"
 go vet ./...
 go test ./...
 go build ./...
