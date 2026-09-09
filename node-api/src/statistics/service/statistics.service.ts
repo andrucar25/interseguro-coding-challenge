@@ -132,4 +132,4 @@ export const calculateStatistics = (input: unknown): MatrixStatistics => {
 		average: accumulator.sum / accumulator.count,
 		hasDiagonalMatrix,
 	};
-}
+};
