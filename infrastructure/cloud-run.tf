@@ -52,6 +52,11 @@ resource "google_cloud_run_v2_service" "go_api" {
         value = google_cloud_run_v2_service.node_api.uri
       }
 
+      env {
+        name  = "CORS_ALLOWED_ORIGINS"
+        value = var.cors_allowed_origins
+      }
+
       resources {
         limits = {
           cpu    = "1"

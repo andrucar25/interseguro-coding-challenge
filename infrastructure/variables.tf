@@ -67,3 +67,13 @@ variable "node_image" {
     error_message = "node_image must be a complete image reference with an explicit tag other than :latest."
   }
 }
+
+variable "cors_allowed_origins" {
+  description = "Origins allowed to call the Go API from a browser."
+  type        = string
+
+  validation {
+    condition     = length(trimspace(var.cors_allowed_origins)) > 0
+    error_message = "cors_allowed_origins must not be empty."
+  }
+}
