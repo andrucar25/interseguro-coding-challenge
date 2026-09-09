@@ -17,6 +17,7 @@ import (
 )
 
 const testTolerance = 1e-10
+const allowedOrigin = "http://localhost:5173"
 
 func TestFactorizeQR(t *testing.T) {
 	input := qr.Matrix{
@@ -29,7 +30,7 @@ func TestFactorizeQR(t *testing.T) {
 		t.Fatalf("json.Marshal() error = %v", err)
 	}
 
-	response := performRequest(t, New(fakeStatisticsClient{result: statistics.Result{Maximum: 1, Minimum: -1, Sum: 0, Average: 0, HasDiagonalMatrix: false}}), body)
+	response := performRequest(t, New(fakeStatisticsClient{result: statistics.Result{Maximum: 1, Minimum: -1, Sum: 0, Average: 0, HasDiagonalMatrix: false}}, allowedOrigin), body)
 	if response.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d, want %d", response.StatusCode, http.StatusOK)
 	}
@@ -80,7 +81,7 @@ func TestFactorizeQRCallsNodeAndReturnsStatistics(t *testing.T) {
 		t.Fatalf("json.Marshal() error = %v", err)
 	}
 
-	response := performRequest(t, New(statisticsClient), body)
+	response := performRequest(t, New(statisticsClient, allowedOrigin), body)
 	if response.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d, want %d", response.StatusCode, http.StatusOK)
 	}
@@ -111,7 +112,7 @@ func TestFactorizeQRInvalidRequest(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			response := performRequest(t, New(fakeStatisticsClient{}), []byte(testCase.body))
+			response := performRequest(t, New(fakeStatisticsClient{}, allowedOrigin), []byte(testCase.body))
 			if response.StatusCode != http.StatusBadRequest {
 				t.Fatalf("status = %d, want %d", response.StatusCode, http.StatusBadRequest)
 			}
@@ -157,7 +158,7 @@ func TestFactorizeQRMapsDownstreamErrors(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			response := performRequest(t, New(fakeStatisticsClient{err: testCase.err}), []byte(`{"matrix":[[1]]}`))
+			response := performRequest(t, New(fakeStatisticsClient{err: testCase.err}, allowedOrigin), []byte(`{"matrix":[[1]]}`))
 			if response.StatusCode != testCase.wantStatus {
 				t.Fatalf("status = %d, want %d", response.StatusCode, testCase.wantStatus)
 			}
@@ -165,6 +166,54 @@ func TestFactorizeQRMapsDownstreamErrors(t *testing.T) {
 			decodeJSON(t, response.Body, &result)
 			if result != testCase.wantBody {
 				t.Errorf("response = %#v, want %#v", result, testCase.wantBody)
+			}
+		})
+	}
+}
+
+func TestCORS(t *testing.T) {
+	app := New(fakeStatisticsClient{}, allowedOrigin)
+
+	preflightRequest := httptest.NewRequest(http.MethodOptions, "/qr", nil)
+	preflightRequest.Header.Set("Origin", allowedOrigin)
+	preflightRequest.Header.Set("Access-Control-Request-Method", http.MethodPost)
+	preflightRequest.Header.Set("Access-Control-Request-Headers", "Content-Type")
+	preflightResponse, err := app.Test(preflightRequest)
+	if err != nil {
+		t.Fatalf("app.Test() preflight error = %v", err)
+	}
+	defer preflightResponse.Body.Close()
+	if preflightResponse.StatusCode != http.StatusNoContent {
+		t.Errorf("preflight status = %d, want %d", preflightResponse.StatusCode, http.StatusNoContent)
+	}
+	if got := preflightResponse.Header.Get("Access-Control-Allow-Origin"); got != allowedOrigin {
+		t.Errorf("preflight Access-Control-Allow-Origin = %q, want %q", got, allowedOrigin)
+	}
+	if got := preflightResponse.Header.Get("Access-Control-Allow-Methods"); got != "POST, OPTIONS" {
+		t.Errorf("preflight Access-Control-Allow-Methods = %q, want %q", got, "POST, OPTIONS")
+	}
+	if got := preflightResponse.Header.Get("Access-Control-Allow-Headers"); got != "Content-Type" {
+		t.Errorf("preflight Access-Control-Allow-Headers = %q, want %q", got, "Content-Type")
+	}
+
+	for _, origin := range []string{allowedOrigin, "http://untrusted.example"} {
+		t.Run(origin, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodPost, "/qr", bytes.NewReader([]byte(`{"matrix":[[1]]}`)))
+			request.Header.Set("Content-Type", "application/json")
+			request.Header.Set("Origin", origin)
+
+			response, err := app.Test(request)
+			if err != nil {
+				t.Fatalf("app.Test() POST error = %v", err)
+			}
+			defer response.Body.Close()
+
+			wantOrigin := ""
+			if origin == allowedOrigin {
+				wantOrigin = allowedOrigin
+			}
+			if got := response.Header.Get("Access-Control-Allow-Origin"); got != wantOrigin {
+				t.Errorf("Access-Control-Allow-Origin = %q, want %q", got, wantOrigin)
 			}
 		})
 	}

@@ -23,7 +23,7 @@ func main() {
 		log.Fatalf("invalid NODE_API_URL: %v", err)
 	}
 
-	if err := httpapi.New(statisticsClient).Listen(":" + port); err != nil {
+	if err := httpapi.New(statisticsClient, os.Getenv("CORS_ALLOWED_ORIGINS")).Listen(":" + port); err != nil {
 		log.Fatal(err)
 	}
 }
