@@ -53,9 +53,19 @@ textarea:focus-visible,
 
 .page-shell {
   display: grid;
+  grid-template-rows: 1fr auto;
   min-height: 100vh;
   padding: 2rem 1rem;
   place-items: start center;
+  gap: 1.5rem;
+}
+
+.challenge-footer {
+  margin: 0;
+  color: #627d98;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  text-align: center;
 }
 
 .calculator-card {

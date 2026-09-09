@@ -95,6 +95,7 @@ export default function App() {
           </section>
         ) : null}
       </section>
+      <footer className="challenge-footer">Coding Challenge Interseguro · Developed by Andrés De la Barra Vásquez</footer>
     </main>
   )
 }
