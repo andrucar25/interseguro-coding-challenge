@@ -77,3 +77,34 @@ variable "cors_allowed_origins" {
     error_message = "cors_allowed_origins must not be empty."
   }
 }
+
+variable "jwt_secret" {
+  description = "Shared HS256 secret for Go-to-Node service JWTs."
+  type        = string
+  sensitive   = true
+
+  validation {
+    condition     = length(trimspace(var.jwt_secret)) > 0
+    error_message = "jwt_secret must not be empty."
+  }
+}
+
+variable "jwt_issuer" {
+  description = "Issuer Go signs into service-to-service JWTs."
+  type        = string
+
+  validation {
+    condition     = length(trimspace(var.jwt_issuer)) > 0
+    error_message = "jwt_issuer must not be empty."
+  }
+}
+
+variable "jwt_audience" {
+  description = "Audience Node requires in service-to-service JWTs."
+  type        = string
+
+  validation {
+    condition     = length(trimspace(var.jwt_audience)) > 0
+    error_message = "jwt_audience must not be empty."
+  }
+}

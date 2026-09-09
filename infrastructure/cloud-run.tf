@@ -14,6 +14,21 @@ resource "google_cloud_run_v2_service" "node_api" {
     containers {
       image = var.node_image
 
+      env {
+        name  = "JWT_SECRET"
+        value = var.jwt_secret
+      }
+
+      env {
+        name  = "JWT_ISSUER"
+        value = var.jwt_issuer
+      }
+
+      env {
+        name  = "JWT_AUDIENCE"
+        value = var.jwt_audience
+      }
+
       resources {
         limits = {
           cpu    = "1"
@@ -50,6 +65,21 @@ resource "google_cloud_run_v2_service" "go_api" {
       env {
         name  = "NODE_API_URL"
         value = google_cloud_run_v2_service.node_api.uri
+      }
+
+      env {
+        name  = "NODE_API_JWT_SECRET"
+        value = var.jwt_secret
+      }
+
+      env {
+        name  = "NODE_API_JWT_ISSUER"
+        value = var.jwt_issuer
+      }
+
+      env {
+        name  = "NODE_API_JWT_AUDIENCE"
+        value = var.jwt_audience
       }
 
       env {
