@@ -89,6 +89,29 @@ func TestFactorizeDoesNotMutateInput(t *testing.T) {
 	}
 }
 
+func TestFactorizePreservesReflectorConventionWithZeroSecondColumn(t *testing.T) {
+	input := Matrix{
+		{3, 0},
+		{4, 0},
+		{0, 0},
+	}
+
+	q, r, err := Factorize(input)
+	if err != nil {
+		t.Fatalf("Factorize() error = %v", err)
+	}
+
+	if !approximatelyEqual(r[0][0], -5) {
+		t.Fatalf("R[0][0] = %.16g, want -5", r[0][0])
+	}
+	wantSecondColumn := []float64{-0.8, 0.6, 0}
+	for row, want := range wantSecondColumn {
+		if !approximatelyEqual(q[row][1], want) {
+			t.Fatalf("Q[%d][1] = %.16g, want %.16g", row, q[row][1], want)
+		}
+	}
+}
+
 func TestFactorizeInvalidInput(t *testing.T) {
 	testCases := []struct {
 		name  string

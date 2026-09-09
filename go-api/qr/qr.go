@@ -39,84 +39,114 @@ func Factorize(input Matrix) (q Matrix, r Matrix, err error) {
 		return nil, nil, err
 	}
 
-	r = copyMatrix(input)
+	work := copyMatrix(input)
 	reflectors := make([]reflector, columns)
 
 	for column := range columns {
-		norm := 0.0
-		for row := column; row < rows; row++ {
-			norm = math.Hypot(norm, r[row][column])
-			if !isFinite(norm) {
-				return nil, nil, ErrNumericalFailure
-			}
+		reflection, alpha, hasReflector, ok := buildReflector(work, column, rows)
+		if !ok {
+			return nil, nil, ErrNumericalFailure
 		}
-
-		if norm == 0 {
+		if !hasReflector {
 			continue
 		}
 
-		alpha := -norm
-		if r[column][column] < 0 {
-			alpha = norm
-		}
-
-		vector := make([]float64, rows-column)
-		for row := column; row < rows; row++ {
-			vector[row-column] = r[row][column] / norm
-			if !isFinite(vector[row-column]) {
-				return nil, nil, ErrNumericalFailure
-			}
-		}
-		vector[0] -= alpha / norm
-		if !isFinite(vector[0]) {
+		if !applyColumnReflector(work, column, columns, reflection, alpha) {
 			return nil, nil, ErrNumericalFailure
 		}
-
-		vectorNormSquared := 0.0
-		for _, value := range vector {
-			vectorNormSquared += value * value
-			if !isFinite(vectorNormSquared) {
-				return nil, nil, ErrNumericalFailure
-			}
-		}
-		if vectorNormSquared == 0 {
-			return nil, nil, ErrNumericalFailure
-		}
-		beta := 2 / vectorNormSquared
-		if !isFinite(beta) {
-			return nil, nil, ErrNumericalFailure
-		}
-
-		if !applyReflector(r, column, column+1, columns, vector, beta) {
-			return nil, nil, ErrNumericalFailure
-		}
-		r[column][column] = alpha
-		for row := column + 1; row < rows; row++ {
-			r[row][column] = 0
-		}
-		reflectors[column] = reflector{vector: vector, beta: beta}
+		reflectors[column] = reflection
 	}
 
-	q = identityColumns(rows, columns)
+	q, ok := buildQ(rows, columns, reflectors)
+	if !ok {
+		return nil, nil, ErrNumericalFailure
+	}
+	r = extractR(work, columns)
+
+	if !matrixIsFinite(q) || !matrixIsFinite(r) {
+		return nil, nil, ErrNumericalFailure
+	}
+	return q, r, nil
+}
+
+func buildReflector(matrix Matrix, column, rows int) (reflection reflector, alpha float64, hasReflector bool, ok bool) {
+	norm := 0.0
+	for row := column; row < rows; row++ {
+		norm = math.Hypot(norm, matrix[row][column])
+		if !isFinite(norm) {
+			return reflector{}, 0, false, false
+		}
+	}
+
+	if norm == 0 {
+		return reflector{}, 0, false, true
+	}
+
+	alpha = -norm
+	if matrix[column][column] < 0 {
+		alpha = norm
+	}
+
+	vector := make([]float64, rows-column)
+	for row := column; row < rows; row++ {
+		vector[row-column] = matrix[row][column] / norm
+		if !isFinite(vector[row-column]) {
+			return reflector{}, 0, false, false
+		}
+	}
+	vector[0] -= alpha / norm
+	if !isFinite(vector[0]) {
+		return reflector{}, 0, false, false
+	}
+
+	vectorNormSquared := 0.0
+	for _, value := range vector {
+		vectorNormSquared += value * value
+		if !isFinite(vectorNormSquared) {
+			return reflector{}, 0, false, false
+		}
+	}
+	if vectorNormSquared == 0 {
+		return reflector{}, 0, false, false
+	}
+	reflection = reflector{vector: vector, beta: 2 / vectorNormSquared}
+	if !isFinite(reflection.beta) {
+		return reflector{}, 0, false, false
+	}
+	return reflection, alpha, true, true
+}
+
+func applyColumnReflector(matrix Matrix, column, columns int, reflection reflector, alpha float64) bool {
+	if !applyReflector(matrix, column, column+1, columns, reflection.vector, reflection.beta) {
+		return false
+	}
+	matrix[column][column] = alpha
+	for row := column + 1; row < len(matrix); row++ {
+		matrix[row][column] = 0
+	}
+	return true
+}
+
+func buildQ(rows, columns int, reflectors []reflector) (Matrix, bool) {
+	q := identityColumns(rows, columns)
 	for column := columns - 1; column >= 0; column-- {
 		reflection := reflectors[column]
 		if reflection.vector == nil {
 			continue
 		}
 		if !applyReflector(q, column, 0, columns, reflection.vector, reflection.beta) {
-			return nil, nil, ErrNumericalFailure
+			return nil, false
 		}
 	}
+	return q, true
+}
 
-	resultR := make(Matrix, columns)
-	for row := range resultR {
-		resultR[row] = append([]float64(nil), r[row]...)
+func extractR(work Matrix, columns int) Matrix {
+	r := make(Matrix, columns)
+	for row := range r {
+		r[row] = append([]float64(nil), work[row][:columns]...)
 	}
-
-	if !matrixIsFinite(q) || !matrixIsFinite(resultR) {
-		return nil, nil, ErrNumericalFailure
-	}
-	return q, resultR, nil
+	return r
 }
 
 func validate(input Matrix) (rows, columns int, err error) {
