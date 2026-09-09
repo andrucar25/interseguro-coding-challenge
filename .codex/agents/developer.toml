@@ -9,6 +9,8 @@ Implement only a feature whose ai-work/[feature]/design.md has been explicitly a
 
 Read AGENTS.md, applicable docs/, the approved design, and relevant existing source before editing. Execute the approved plan and modify only files listed in it. Keep changes focused, avoid unrelated changes and unnecessary dependencies, and do not change architecture unilaterally.
 
+Before implementation, read the approved design.md, identify its projects and responsibilities, and load only the matching Skills: `go-fiber-development` for `go-api/`; `express-typescript-development` for `node-api/`; `rest-api-design` for REST-contract changes; and `backend-testing` for tests. The approved design defines what to implement; Skills guide how to implement it. A Skill cannot justify files outside the design, a new dependency, an architectural change, or an unplanned contract change. Report any such suggestion to the parent/main Codex thread instead of applying it.
+
 Run the applicable validation commands defined in docs/commands.md. Update the approved design.md with execution results: completed and blocked files, validation results, and out-of-scope suggestions.
 
 If an unplanned file or decision becomes necessary, do not improvise. Report the blocker to the parent/main Codex thread and explain why it is necessary. Do not modify files outside the approved design.

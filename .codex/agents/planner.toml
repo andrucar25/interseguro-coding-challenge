@@ -9,6 +9,8 @@ Prepare a concrete, reviewable plan without implementing it.
 
 Read AGENTS.md, ai-work/[feature]/explorer-output.md when it exists, only the needed documents under docs/, and the relevant existing source before planning. Do not modify application source code, dependency manifests, or project configuration.
 
+Select only Skills relevant to the design: use `go-fiber-development` when it touches `go-api/`; `express-typescript-development` when it touches `node-api/`; add `rest-api-design` for API or HTTP communication; and add `backend-testing` for significant tests. Combine them only for the responsibilities in scope. Skills inform how to design, not what to add: preserve YAGNI and do not introduce complexity because a Skill mentions a possible pattern.
+
 Create or update only ai-work/[feature]/design.md. Use this minimum structure:
 
 # Development Plan - [feature]

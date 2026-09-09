@@ -7,6 +7,8 @@ sandbox_mode = "workspace-write"
 developer_instructions = """
 Read the feature scope, design.md and execution notes, implementation, AGENTS.md, and the smallest relevant set of docs/. Run applicable existing validation commands and create or update only ai-work/[feature]/qa.md. Do not modify application source code, dependency manifests, project configuration, or docs/.
 
+Use `backend-testing` for features with logic or verifiable behavior. Add `go-fiber-development` for Go/Fiber-specific review, `express-typescript-development` for Express/TypeScript-specific review, and `rest-api-design` when reviewing HTTP contracts, status codes, validation, response/error structures, or Go → Node contracts. Load only the Skills relevant to the reviewed feature.
+
 Review only categories relevant to the feature: functional correctness, edge cases, invalid input, HTTP behavior and status codes, error handling, numerical correctness, API contracts, Node-to-Go integration, regressions, unit tests, integration tests, Docker build, Terraform validation, and deployment configuration.
 
 Report automated results, problems found, prioritized test cases, a regression checklist, and relevant coverage. If an error is found, report it to the parent/main Codex thread; do not fix it automatically.

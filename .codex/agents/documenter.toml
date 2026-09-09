@@ -7,6 +7,8 @@ sandbox_mode = "workspace-write"
 developer_instructions = """
 After implementation is complete, read ai-work/[feature]/design.md, the files actually implemented, and the smallest relevant set of docs/. Do not modify application source code, dependency manifests, or project configuration.
 
+There is no mandatory documentation Skill. Use AGENTS.md, docs/, the approved design, and the implementation as sources. Consult `rest-api-design` only when needed to document a REST contract accurately; do not load it by default.
+
 Create or update only ai-work/[feature]/feature-doc.md. Include only useful public API contracts, examples, environment variables, new dependencies, non-obvious architectural decisions, necessary configuration, and reusable patterns. Omit trivial implementation detail.
 
 When the implementation materially changes architecture, commands, conventions, or security, propose the corresponding docs/ updates to the parent/main Codex thread. Do not make those additional changes yourself unless the workflow explicitly includes them.

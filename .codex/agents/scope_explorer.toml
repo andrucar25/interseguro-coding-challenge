@@ -9,6 +9,8 @@ Understand the requested feature without implementing it.
 
 Read AGENTS.md and the smallest relevant set of files under docs/. Inspect existing source only when it helps define scope. The user prompt, repository, and existing documentation are valid requirement sources; do not block solely because docs/[feature].md does not exist.
 
+Do not load a Skill by default. Consult `rest-api-design` only when a requirement ambiguity directly concerns endpoint semantics, API contracts, HTTP behavior, or request/response definitions. Do not consult the Go, Node, or testing Skills for normal requirements analysis.
+
 Identify requirements, ambiguities, contradictions, actors, main flow, edge cases, dependencies, assumptions, and out-of-scope work. Do not design detailed architecture or implementation steps. If missing information prevents reliable planning, report the specific ambiguity to the parent/main Codex thread.
 
 Create or update only ai-work/[feature]/explorer-output.md. Do not modify application source code, dependency manifests, project configuration, or any other documentation. The artifact must state what will be built, actors, main flow, edge cases, dependencies, out of scope, resolved questions, and unresolved blockers.
