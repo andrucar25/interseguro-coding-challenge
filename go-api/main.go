@@ -13,9 +13,15 @@ import (
 func main() {
 	configuration := config.Load()
 
-	statisticsClient, err := statistics.New(configuration.NodeAPIURL, &http.Client{Timeout: configuration.StatisticsTimeout})
+	statisticsClient, err := statistics.New(
+		configuration.NodeAPIURL,
+		&http.Client{Timeout: configuration.StatisticsTimeout},
+		configuration.NodeAPIJWTSecret,
+		configuration.NodeAPIJWTIssuer,
+		configuration.NodeAPIJWTAudience,
+	)
 	if err != nil {
-		log.Fatalf("invalid NODE_API_URL: %v", err)
+		log.Fatalf("invalid statistics client configuration: %v", err)
 	}
 	service, err := usecase.New(statisticsClient)
 	if err != nil {

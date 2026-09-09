@@ -39,6 +39,7 @@ type Result struct {
 type Client struct {
 	endpoint   string
 	httpClient *http.Client
+	signer     *TokenSigner
 }
 
 type request struct {
@@ -55,12 +56,16 @@ type response struct {
 }
 
 // New constructs a client for an absolute HTTP(S) base URL.
-func New(baseURL string, httpClient *http.Client) (*Client, error) {
+func New(baseURL string, httpClient *http.Client, jwtSecret, jwtIssuer, jwtAudience string) (*Client, error) {
 	if strings.TrimSpace(baseURL) == "" {
 		return nil, errors.New("node API URL must not be empty")
 	}
 	if httpClient == nil {
 		return nil, errors.New("HTTP client must not be nil")
+	}
+	signer, err := NewTokenSigner(jwtSecret, jwtIssuer, jwtAudience)
+	if err != nil {
+		return nil, fmt.Errorf("create JWT signer: %w", err)
 	}
 
 	parsedURL, err := url.Parse(baseURL)
@@ -79,7 +84,7 @@ func New(baseURL string, httpClient *http.Client) (*Client, error) {
 		return nil, fmt.Errorf("build statistics endpoint: %w", err)
 	}
 
-	return &Client{endpoint: endpoint, httpClient: httpClient}, nil
+	return &Client{endpoint: endpoint, httpClient: httpClient, signer: signer}, nil
 }
 
 // Calculate sends QR result matrices to Node and validates its statistics result.
@@ -89,11 +94,17 @@ func (c *Client) Calculate(ctx context.Context, q, r qr.Matrix) (Result, error) 
 		return Result{}, fmt.Errorf("%w: encode statistics request: %w", ErrDownstream, err)
 	}
 
+	token, err := c.signer.Sign()
+	if err != nil {
+		return Result{}, fmt.Errorf("%w: create service token: %w", ErrDownstream, err)
+	}
+
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint, bytes.NewReader(body))
 	if err != nil {
 		return Result{}, fmt.Errorf("create statistics request: %w", err)
 	}
 	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "Bearer "+token)
 
 	response, err := c.httpClient.Do(request)
 	if err != nil {

@@ -6,7 +6,7 @@ This technical challenge accepts a matrix, calculates its QR factorization, and 
 
 - Go/Fiber entry API and Node.js/Express statistics API.
 - Economy QR factorization for rectangular matrices (`rows >= columns`).
-- Synchronous Go-to-Node HTTP communication: Go sends `Q` and `R`; Node calculates maximum, minimum, average, total sum, and diagonal-matrix detection.
+- Synchronous Go-to-Node HTTP communication protected with short-lived service-to-service JWTs: Go sends `Q` and `R`; Node calculates maximum, minimum, average, total sum, and diagonal-matrix detection.
 - Input validation and error handling.
 - Unit tests and in-process HTTP endpoint tests for the main logic and API boundaries.
 - Docker for both backends and Docker Compose for the frontend, Go, and Node services.
@@ -26,12 +26,12 @@ Firebase Hosting
    ↓
 Go + Fiber
 Cloud Run
-   ↓ HTTP
+   ↓ Authorization: Bearer <HS256 JWT>
 Node.js + Express
 Cloud Run
 ```
 
-Go receives the matrix and performs QR factorization, then sends `Q` and `R` to Node. Node calculates the statistics, and Go returns the consolidated response to the frontend.
+Go receives the matrix and performs QR factorization, then signs a short-lived JWT before sending `Q` and `R` to Node. Node verifies the JWT before calculating statistics, and Go returns the consolidated response to the frontend. Go remains public so the Firebase demo can call it; this JWT is service-to-service protection, not frontend or user authentication.
 
 ## Technologies and decisions
 
@@ -82,9 +82,11 @@ The same application runs in different environments by changing external configu
 
 | Component | Variables |
 | --- | --- |
-| Go | `PORT`, `NODE_API_URL`, `CORS_ALLOWED_ORIGINS` |
-| Node | `PORT` |
+| Go | `PORT`, `NODE_API_URL`, `NODE_API_JWT_SECRET`, `NODE_API_JWT_ISSUER`, `NODE_API_JWT_AUDIENCE`, `CORS_ALLOWED_ORIGINS` |
+| Node | `PORT`, `JWT_SECRET`, `JWT_ISSUER`, `JWT_AUDIENCE` |
 | Frontend | `VITE_API_URL` |
+
+For Docker Compose, provide `JWT_SECRET` through an untracked root `.env` file or the shell. Compose maps it to the corresponding Go and Node variable names; `JWT_ISSUER` and `JWT_AUDIENCE` default to the values shown above for local development.
 
 ## Quality
 
@@ -102,4 +104,4 @@ go vet ./... && go test ./... && go build ./...
 
 Implemented: frontend; unit and in-process HTTP endpoint tests.
 
-Not implemented: JWT authentication (optional in the challenge).
+Implemented: service-to-service JWT protection for Go → Node statistics requests. Frontend/user authentication remains out of scope.

@@ -6,6 +6,9 @@ services:
       - "3000:8080"
     environment:
       PORT: "8080"
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      JWT_ISSUER: ${JWT_ISSUER:-interseguro-go-api}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-interseguro-node-api}
 
   go-api:
     build:
@@ -15,6 +18,9 @@ services:
     environment:
       PORT: "8080"
       NODE_API_URL: "http://node-api:8080"
+      NODE_API_JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      NODE_API_JWT_ISSUER: ${JWT_ISSUER:-interseguro-go-api}
+      NODE_API_JWT_AUDIENCE: ${JWT_AUDIENCE:-interseguro-node-api}
       CORS_ALLOWED_ORIGINS: "http://localhost:5173"
     depends_on:
       - node-api

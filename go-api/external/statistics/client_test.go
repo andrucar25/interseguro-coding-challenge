@@ -29,6 +29,17 @@ func TestCalculateSendsNodeContractAndDecodesResult(t *testing.T) {
 		if contentType := req.Header.Get("Content-Type"); contentType != "application/json" {
 			t.Errorf("Content-Type = %q, want %q", contentType, "application/json")
 		}
+		authorization := req.Header.Get("Authorization")
+		if !strings.HasPrefix(authorization, "Bearer ") {
+			t.Errorf("Authorization = %q, want Bearer token", authorization)
+		} else {
+			claims := parseServiceToken(t, strings.TrimPrefix(authorization, "Bearer "))
+			if claims.IssuedAt == nil || claims.ExpiresAt == nil {
+				t.Error("Authorization token is missing issued-at or expiration claims")
+			} else if lifetime := claims.ExpiresAt.Time.Sub(claims.IssuedAt.Time); lifetime != serviceTokenLifetime {
+				t.Errorf("Authorization token lifetime = %s, want %s", lifetime, serviceTokenLifetime)
+			}
+		}
 
 		var got request
 		if err := json.NewDecoder(req.Body).Decode(&got); err != nil {
@@ -134,16 +145,20 @@ func TestNewRejectsInvalidConfiguration(t *testing.T) {
 	testCases := []string{"", "relative/path", "ftp://example.test", "http://", "http://example.test?query=value"}
 	for _, baseURL := range testCases {
 		t.Run(baseURL, func(t *testing.T) {
-			if _, err := New(baseURL, &http.Client{}); err == nil {
+			if _, err := New(baseURL, &http.Client{}, testJWTSecret, testJWTIssuer, testJWTAudience); err == nil {
 				t.Fatalf("New(%q) error = nil, want an error", baseURL)
 			}
 		})
+	}
+
+	if _, err := New("http://example.test", &http.Client{}, "", testJWTIssuer, testJWTAudience); err == nil {
+		t.Fatal("New() error = nil, want error for empty JWT secret")
 	}
 }
 
 func newClient(t *testing.T, baseURL string, httpClient *http.Client) *Client {
 	t.Helper()
-	client, err := New(baseURL, httpClient)
+	client, err := New(baseURL, httpClient, testJWTSecret, testJWTIssuer, testJWTAudience)
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -168,6 +183,12 @@ func matricesEqual(left, right qr.Matrix) bool {
 }
 
 const validResponse = `{"maximum":2,"minimum":0,"sum":2,"average":1,"hasDiagonalMatrix":true}`
+
+const (
+	testJWTSecret   = "test-service-token-secret"
+	testJWTIssuer   = "interseguro-go-api"
+	testJWTAudience = "interseguro-node-api"
+)
 
 type roundTripperFunc func(*http.Request) (*http.Response, error)
 

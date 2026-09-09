@@ -3,8 +3,12 @@ module github.com/andrucar25/interseguro-coding-challenge/go-api
 go 1.27.1
 
 require (
-	github.com/andybalholm/brotli v1.2.2 // indirect
 	github.com/gofiber/fiber/v3 v3.5.0
+	github.com/golang-jwt/jwt/v5 v5.3.1
+)
+
+require (
+	github.com/andybalholm/brotli v1.2.2 // indirect
 	github.com/gofiber/schema v1.8.3 // indirect
 	github.com/gofiber/utils/v2 v2.4.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect

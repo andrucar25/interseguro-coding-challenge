@@ -5,6 +5,10 @@ import express, {
 } from "express";
 import helmet from "helmet";
 
+import {
+	requireServiceToken,
+	type ServiceTokenConfig,
+} from "./auth/service-token.js";
 import { statisticsRouter } from "./statistics/statistics.router.js";
 
 function hasBodyParserErrorDetails(
@@ -36,29 +40,34 @@ function isOversizedJsonError(error: unknown): boolean {
 	);
 }
 
-export const app = express();
+export function createApp(serviceTokenConfig: ServiceTokenConfig) {
+	const app = express();
 
-app.use(helmet());
-app.use(express.json());
-app.use(statisticsRouter);
+	app.use(helmet());
+	app.use(
+		statisticsRouter(requireServiceToken(serviceTokenConfig), express.json()),
+	);
 
-app.use(
-	(
-		error: unknown,
-		_request: Request,
-		response: Response,
-		_next: NextFunction,
-	): void => {
-		if (isMalformedJsonError(error)) {
-			response.status(400).json({ error: "invalid_request" });
-			return;
-		}
+	app.use(
+		(
+			error: unknown,
+			_request: Request,
+			response: Response,
+			_next: NextFunction,
+		): void => {
+			if (isMalformedJsonError(error)) {
+				response.status(400).json({ error: "invalid_request" });
+				return;
+			}
 
-		if (isOversizedJsonError(error)) {
-			response.status(413).json({ error: "invalid_request" });
-			return;
-		}
+			if (isOversizedJsonError(error)) {
+				response.status(413).json({ error: "invalid_request" });
+				return;
+			}
 
-		response.status(500).json({ error: "internal_error" });
-	},
-);
+			response.status(500).json({ error: "internal_error" });
+		},
+	);
+
+	return app;
+}
