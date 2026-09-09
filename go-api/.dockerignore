@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+.git
+coverage
+*.coverprofile
+bin
+*.exe
+*.test
+*_test.go
+*.log
+tmp
+.DS_Store
+.idea
+.vscode
